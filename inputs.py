@@ -9,16 +9,7 @@ import os
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('init_model', './init_models/vgg16_weights_tf_dim_ordering_tf_kernels_notop.h5',
-                    'Initial model.')
-flags.DEFINE_string('tfrecord_folder', '../tfrecords', 'Folder containing tfrecords.')
-flags.DEFINE_string('train', 'train_mini', 'Train dataset.')
-flags.DEFINE_string('val', 'val_mini', 'Val dataset.')
-flags.DEFINE_integer('epochs', 100, 'Training epochs.')
-flags.DEFINE_integer('train_batch_size', 4, 'Train batch size.')
-flags.DEFINE_integer('val_batch_size', 2, 'Val batch size.')
-flags.DEFINE_string('train_dir', './train', 'Train directory.')
-flags.DEFINE_string('log_dir', './train/log', 'Log directory.')
+flags.DEFINE_string('tfrecord_folder', './tfrecords', 'Folder containing tfrecords.')
 
 IMAGE_SHAPE = (512, 512, 3)
 
@@ -150,12 +141,14 @@ def inputs(dataset_split, is_training, batch_size, num_epochs=None):
             dataset = dataset.map(val_preprocessing_fn)
         dataset = dataset.map(normalize)
 
-        min_queue_examples = int(NUMBER_VAL_PAIRS * 0.4)
+        min_queue_examples = int(NUMBER_VAL_PAIRS * 0.1)
         if is_training:
-            min_queue_examples = int(NUMBER_TRAIN_PAIRS * 0.4)
+            min_queue_examples = int(NUMBER_TRAIN_PAIRS * 0.1)
             dataset = dataset.shuffle(buffer_size=min_queue_examples + 3 * batch_size)
         dataset = dataset.repeat(num_epochs)
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(buffer_size=min_queue_examples)
+    
+    iterator = dataset.make_one_shot_iterator()
 
-    return dataset
+    return iterator.get_next()
