@@ -45,11 +45,11 @@ def decode(serialized_example):
 
     image_a = tf.image.decode_jpeg(features['image_a_data'], channels=3)
     image_b = tf.image.decode_jpeg(features['image_b_data'], channels=3)
-    image_a_index = features['image_a_index']
-    image_b_index = features['image_b_index']
+    image_ida = features['image_a_index']
+    image_idb = features['image_b_index']
     label = tf.cast(features['label'], tf.int32)
 
-    return image_a, image_b, label
+    return image_a, image_b, label, image_ida, image_idb
 
 
 def shift_image(image_a, image_b, width_shift_range, height_shift_range):
@@ -81,17 +81,19 @@ def flip_image(horizontal_flip, image_a, image_b):
     return image_a, image_b
 
 
-def normalize(image_a, image_b, label):
+def normalize(image_a, image_b):
     # normalize image to [-1, 1]
     image_a = (2.0 / 255.0) * tf.to_float(image_a) - 1.0
     image_b = (2.0 / 255.0) * tf.to_float(image_b) - 1.0
 
-    return image_a, image_b, label
+    return image_a, image_b
 
 
 def augment(image_a,
             image_b,
             label,
+            image_ida,
+            image_idb,
             resize=None,  # Resize the image to some size e.g. [512, 512]
             hue_delta=0,  # Adjust the hue of an RGB image by random factor
             horizontal_flip=False,  # Random left right flip,
@@ -108,8 +110,9 @@ def augment(image_a,
     
     image_a, image_b = flip_image(horizontal_flip, image_a, image_b)
     image_a, image_b = shift_image(image_a, image_b, width_shift_range, height_shift_range)
+    image_a, image_b = normalize(image_a, image_b)
     
-    return image_a, image_b, label
+    return image_a, image_b, label, image_ida, image_idb
 
 
 train_config = {
@@ -139,7 +142,6 @@ def inputs(dataset_split, is_training, batch_size, num_epochs=None):
             dataset = dataset.map(train_preprocessing_fn)
         else:
             dataset = dataset.map(val_preprocessing_fn)
-        dataset = dataset.map(normalize)
 
         min_queue_examples = int(NUMBER_VAL_PAIRS * 0.1)
         if is_training:

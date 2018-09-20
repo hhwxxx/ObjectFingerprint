@@ -16,15 +16,15 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('log_frequency', 10, 'Log frequency.')
-flags.DEFINE_string('train_dir', './train/train', 'Training directory.')
+flags.DEFINE_string('train_dir', './train/train_id', 'Training directory.')
 flags.DEFINE_string('dataset_split', 'train', 'Using which dataset split to train the network.')
-flags.DEFINE_integer('batch_size', 2,'Batch size used for train.')
+flags.DEFINE_integer('batch_size', 8,'Batch size used for train.')
 flags.DEFINE_boolean('is_training', True, 'Is training?')
 flags.DEFINE_float('initial_learning_rate', 0.001, 'Initial learning rate.')
-flags.DEFINE_integer('decay_steps', 1000, 'Decay steps in exponential learning rate decay policy.')
-flags.DEFINE_boolean('staircase', False, 'The parameter of learning rate decay policy.')
+flags.DEFINE_integer('decay_steps', 10000, 'Decay steps in exponential learning rate decay policy.')
+flags.DEFINE_boolean('staircase', True, 'The parameter of learning rate decay policy.')
 flags.DEFINE_float('decay_rate', 0.9, 'Decay rate in exponential learning rate decay policy.')
-flags.DEFINE_integer('max_steps', 10000, 'Max training step.')
+flags.DEFINE_integer('max_steps', 20000, 'Max training step.')
 flags.DEFINE_integer('save_checkpoint_steps', 500, 'Save checkpoint steps.')
 flags.DEFINE_string('restore_ckpt_path', '/home/hhw/work/OFP/OFP_TF/init_models/vgg_16.ckpt', 
                     'Path to checkpoint.')
@@ -35,16 +35,18 @@ def train(dataset_split):
         global_step = tf.train.get_or_create_global_step()
 
         with tf.device('/cpu:0'):
-            image_a, image_b, labels = inputs.inputs(dataset_split=dataset_split, 
-                                                     is_training=FLAGS.is_training, 
-                                                     batch_size=FLAGS.batch_size, 
-                                                     num_epochs=None)
+            image_a, image_b, labels, image_ida, image_idb = inputs.inputs(dataset_split=dataset_split, 
+                                                                           is_training=FLAGS.is_training, 
+                                                                           batch_size=FLAGS.batch_size, 
+                                                                           num_epochs=None)
         tf.summary.image('image_a', image_a)
         tf.summary.image('image_b', image_b)
 
-        logits = ofp.inference(image_a, image_b, FLAGS.is_training)
-        total_loss = ofp.loss(logits, labels)
+        logits, logits_ida, logits_idb = ofp.inference(image_a, image_b, FLAGS.is_training)
+        total_loss = ofp.loss(logits, logits_ida, logits_idb, labels, image_ida, image_idb)
         tf.summary.histogram('logits', logits)
+        tf.summary.histogram('logits_ida', logits_ida)
+        tf.summary.histogram('logits_idb', logits_idb)
         tf.summary.scalar('total_loss', total_loss)
 
         learning_rate = tf.train.exponential_decay(FLAGS.initial_learning_rate,
@@ -69,11 +71,9 @@ def train(dataset_split):
 
         def name_in_checkpoint(var):
             return var.op.name.replace(FLAGS.model_variant, 'vgg_16')
-        #variables_to_restore = slim.get_variables_to_restore(exclude=models.EXCLUDE_LIST_MAP[FLAGS.model_variant]+['adam_vars'])
+        #variables_to_restore = slim.get_variables_to_restore(exclude=['ofp','adam_vars'])
         #variables_to_restore = {name_in_checkpoint(var):var for var in variables_to_restore if not 'BatchNorm' in var.op.name}
-        #variables_to_restore = {name_in_checkpoint(var):var for var in variables_to_restore}
-
-        variables_to_restore = slim.get_variables_to_restore(exclude=['ofp', 'dense'])
+        variables_to_restore = slim.get_variables_to_restore(exclude=['ofp'])
         restorer = tf.train.Saver(variables_to_restore)
 
         def init_fn(scaffold, sess):
@@ -153,7 +153,6 @@ def train(dataset_split):
             save_checkpoint_steps=FLAGS.save_checkpoint_steps) as mon_sess:
             while not mon_sess.should_stop():
                 mon_sess.run(train_op)
-
 
 def main(unused_argv):
     if os.path.exists(FLAGS.train_dir):
