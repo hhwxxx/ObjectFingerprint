@@ -95,4 +95,4 @@ tfrecords/
 init_models/
 jupyter_test/
 py2.7_tf1.10/
-train/
+exp/

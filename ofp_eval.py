@@ -6,11 +6,14 @@ import tensorflow as tf
 import inputs
 import ofp
 import time
+import math
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('checkpoint_dir', '/home/hhw/work/OFP/OFP_TF/train/train_id',
+flags.DEFINE_string('checkpoint_dir', './exp/train_id/train',
+                    'Directory containing trained checkpoints.')
+flags.DEFINE_string('eval_dir', './exp/train_id/eval',
                     'Directory containing trained checkpoints.')
 flags.DEFINE_string('dataset_split', 'val', 'Dataset split used to evaluate.')
 flags.DEFINE_integer('batch_size', 16, 'Batch size.')
@@ -36,35 +39,41 @@ def eval():
         predictions = tf.argmax(logits, axis=-1)
 
         accuracy, update_op = tf.metrics.accuracy(labels=labels, predictions=predictions,
-                                                  name='accuracy')
+                                                  name='acc')
+        summary_op = tf.summary.scalar('accuracy', accuracy)
+        
+        num_batches = int(math.ceil(inputs.NUMBER_VAL_PAIRS / float(FLAGS.batch_size)))
 
-        saver = tf.train.Saver(tf.model_variables())
-        local_init = tf.local_variables_initializer()
+        ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
+        if ckpt and ckpt.model_checkpoint_path:
+            global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+            print('Get global_step from checkpoint name.')
+        else:
+            global_step = tf.train.get_or_create_global_step()
+            print('Create global_step.')
 
         config = tf.ConfigProto()
         config.gpu_options.allow_growth = True
-        with tf.Session(config=config) as sess:
-            sess.run(local_init)
-            ckpt = tf.train.get_checkpoint_state(FLAGS.checkpoint_dir)
-            if ckpt and ckpt.model_checkpoint_path:
-                saver.restore(sess, save_path=ckpt.model_checkpoint_path)
-                global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
-                print('Restore succeed.')
-            else:
-                print('No checkpoint file found.')
 
+        with tf.train.MonitoredSession(
+            session_creator=tf.train.ChiefSessionCreator(
+                checkpoint_dir=FLAGS.checkpoint_dir,
+                config=config
+            )
+        ) as mon_sess:
             print('Evaluating {} dataset.'.format(FLAGS.dataset_split))
-            while True:
-                try:
-                    sess.run(update_op)
-                except:
-                    #raise
-                    break
-
-            print('accuracy', sess.run(accuracy))
+            for i in range(num_batches):
+                mon_sess.run(update_op)
+            
+            summary = mon_sess.run(summary_op)
+            summary_writer = tf.summary.FileWriter(logdir=FLAGS.eval_dir, graph=mon_sess.graph)
+            summary_writer.add_summary(summary, global_step=global_step)
+            print('accuracy', mon_sess.run(accuracy))
 
 
 def main(unused_argv):
+    if not os.path.exists(FLAGS.eval_dir):
+        os.makedirs(FLAGS.eval_dir)
     while True:
         eval()
         time.sleep(FLAGS.eval_interval_secs)

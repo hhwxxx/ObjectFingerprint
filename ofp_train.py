@@ -16,7 +16,7 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('log_frequency', 10, 'Log frequency.')
-flags.DEFINE_string('train_dir', './train/train_id', 'Training directory.')
+flags.DEFINE_string('train_dir', './exp/train_id/train', 'Training directory.')
 flags.DEFINE_string('dataset_split', 'train', 'Using which dataset split to train the network.')
 flags.DEFINE_integer('batch_size', 8,'Batch size used for train.')
 flags.DEFINE_boolean('is_training', True, 'Is training?')
@@ -26,7 +26,7 @@ flags.DEFINE_boolean('staircase', True, 'The parameter of learning rate decay po
 flags.DEFINE_float('decay_rate', 0.9, 'Decay rate in exponential learning rate decay policy.')
 flags.DEFINE_integer('max_steps', 20000, 'Max training step.')
 flags.DEFINE_integer('save_checkpoint_steps', 500, 'Save checkpoint steps.')
-flags.DEFINE_string('restore_ckpt_path', '/home/hhw/work/OFP/OFP_TF/init_models/vgg_16.ckpt', 
+flags.DEFINE_string('restore_ckpt_path', './init_models/vgg_16.ckpt', 
                     'Path to checkpoint.')
 
 
@@ -118,8 +118,11 @@ def train(dataset_split):
 
         class _LoggerHook(tf.train.SessionRunHook):
             def begin(self):
-                # self._step = tf.train.get_or_create_global_step()
-                self._step = -1
+                ckpt = tf.train.get_checkpoint_state(checkpoint_dir=FLAGS.checkpoint_dir)
+                if ckpt and ckpt.model_checkpoint_path:
+                    self._step = int(ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]) -1
+                else:
+                    self._step = -1
                 self._start_time = time.time()
 
             def before_run(self, run_context):
@@ -155,8 +158,6 @@ def train(dataset_split):
                 mon_sess.run(train_op)
 
 def main(unused_argv):
-    if os.path.exists(FLAGS.train_dir):
-        shutil.rmtree(FLAGS.train_dir)
     if not os.path.exists(FLAGS.train_dir): 
         os.makedirs(FLAGS.train_dir)
     train(FLAGS.dataset_split)
