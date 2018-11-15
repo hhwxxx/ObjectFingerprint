@@ -57,15 +57,17 @@ def shift_image(image_a, image_b, width_shift_range, height_shift_range):
     if width_shift_range or height_shift_range:
         if width_shift_range:
             width_shift_range = tf.random_uniform([], 
-                                                  -width_shift_range * IMAGE_SHAPE[1],
-                                                  width_shift_range * IMAGE_SHAPE[1])
+                -width_shift_range * IMAGE_SHAPE[1], 
+                width_shift_range * IMAGE_SHAPE[1])
         if height_shift_range:
-            height_shift_range = tf.random_uniform([],
-                                                   -height_shift_range * IMAGE_SHAPE[0],
-                                                   height_shift_range * IMAGE_SHAPE[0])
+            height_shift_range = tf.random_uniform([], 
+                -height_shift_range * IMAGE_SHAPE[0], 
+                height_shift_range * IMAGE_SHAPE[0])
         # Translate both 
-        image_a = tf.contrib.image.translate(image_a, [width_shift_range, height_shift_range])
-        image_b = tf.contrib.image.translate(image_b, [width_shift_range, height_shift_range])
+        image_a = tf.contrib.image.translate(
+            image_a, [width_shift_range, height_shift_range])
+        image_b = tf.contrib.image.translate(
+            image_b, [width_shift_range, height_shift_range])
 
     return image_a, image_b
 
@@ -73,10 +75,10 @@ def shift_image(image_a, image_b, width_shift_range, height_shift_range):
 def flip_image(horizontal_flip, image_a, image_b):
     if horizontal_flip:
         flip_prob = tf.random_uniform([], 0.0, 1.0)
-        image_a, image_b = tf.cond(tf.less(flip_prob, 0.5), 
-                                          lambda: (tf.image.flip_left_right(image_a), 
-                                                   tf.image.flip_left_right(image_b)),
-                                          lambda: (image_a, image_b))
+        image_a, image_b = tf.cond( tf.less(flip_prob, 0.5), 
+            lambda: (tf.image.flip_left_right(image_a), 
+                     tf.image.flip_left_right(image_b)), 
+            lambda: (image_a, image_b))
 
     return image_a, image_b
 
@@ -101,15 +103,20 @@ def augment(image_a,
             height_shift_range=0):  # Randomly translate the image vertically 
     if resize is not None:
         # Resize both images
-        image_a = tf.image.resize_images(image_a, resize, align_corners=True, method=tf.image.ResizeMethod.BILINEAR)
-        image_b = tf.image.resize_images(image_b, resize, align_corners=True, method=tf.image.ResizeMethod.BILINEAR)
+        image_a = tf.image.resize_images(
+            image_a, resize, align_corners=True, 
+            method=tf.image.ResizeMethod.BILINEAR)
+        image_b = tf.image.resize_images(
+            image_b, resize, align_corners=True, 
+            method=tf.image.ResizeMethod.BILINEAR)
     
     if hue_delta:
         image_a = tf.image.random_hue(image_a, hue_delta)
         image_b = tf.image.random_hue(image_b, hue_delta)
     
     image_a, image_b = flip_image(horizontal_flip, image_a, image_b)
-    image_a, image_b = shift_image(image_a, image_b, width_shift_range, height_shift_range)
+    image_a, image_b = shift_image(
+        image_a, image_b, width_shift_range, height_shift_range)
     image_a, image_b = normalize(image_a, image_b)
     
     return image_a, image_b, label, image_ida, image_idb

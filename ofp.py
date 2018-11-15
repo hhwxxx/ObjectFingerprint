@@ -24,27 +24,26 @@ def loss(logits, logits_ida, logits_idb, labels, image_ida, image_idb):
     onehot_labels = tf.one_hot(indices=labels, depth=2, on_value=1, off_value=0)
     weights = tf.where(tf.equal(labels, 0), tf.to_float(tf.equal(labels, 0)), 
                        tf.to_float(tf.equal(labels, 1))*3)
-    cross_entropy_loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels,
-                                                         logits=logits, weights=weights, 
-                                                         scope='cls_loss')
+    cross_entropy_loss = tf.losses.softmax_cross_entropy(
+        onehot_labels=onehot_labels, logits=logits, 
+        weights=weights, scope='cls_loss')
     
     logits_ida = tf.reshape(logits_ida, shape=[-1, 110])
     logits_idb = tf.reshape(logits_idb, shape=[-1, 110])
     onehot_ida = tf.one_hot(indices=image_ida, depth=110, on_value=1, off_value=0)
     onehot_idb = tf.one_hot(indices=image_idb, depth=110, on_value=1, off_value=0)
 
-    cross_entropy_loss_ida = tf.losses.softmax_cross_entropy(onehot_labels=onehot_ida,
-                                                             logits=logits_ida, scope='ida_loss')
-    cross_entropy_loss_idb = tf.losses.softmax_cross_entropy(onehot_labels=onehot_idb,
-                                                             logits=logits_idb, scope='idb_loss')
+    cross_entropy_loss_ida = tf.losses.softmax_cross_entropy(
+        onehot_labels=onehot_ida, logits=logits_ida, scope='ida_loss')
+    cross_entropy_loss_idb = tf.losses.softmax_cross_entropy(
+        onehot_labels=onehot_idb, logits=logits_idb, scope='idb_loss')
 
-    # cross_entropy_loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels,
-    #                                                      logits=logits, scope='loss')
     tf.summary.scalar('cls_loss', cross_entropy_loss)
     tf.summary.scalar('ida_loss', cross_entropy_loss_ida)
     tf.summary.scalar('idb_loss', cross_entropy_loss_idb)
 
-    total_loss = 0.6 * cross_entropy_loss + 0.2 * cross_entropy_loss_ida + 0.2 * cross_entropy_loss_idb
+    total_loss = 0.6 * cross_entropy_loss + 0.2 * cross_entropy_loss_ida + \
+        0.2 * cross_entropy_loss_idb
 
     tf.losses.add_loss(total_loss)
     

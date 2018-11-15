@@ -30,27 +30,28 @@ class ImageReader(object):
     def __init__(self, image_format='jpeg', channels=3):
         """Class constructor.
         Args:
-          image_format: Image format. Only 'jpeg', 'jpg', or 'png' are supported.
-          channels: Image channels.
+            image_format: Image format. 
+                          Only 'jpeg', 'jpg', or 'png' are supported.
+            channels: Image channels.
         """
         with tf.Graph().as_default():
-          self._decode_data = tf.placeholder(dtype=tf.string)
-          self._image_format = image_format
-          self._session = tf.Session()
-          if self._image_format in ('jpeg', 'jpg', 'JPG'):
-            self._decode = tf.image.decode_jpeg(self._decode_data,
+            self._decode_data = tf.placeholder(dtype=tf.string)
+            self._image_format = image_format
+            self._session = tf.Session()
+            if self._image_format in ('jpeg', 'jpg', 'JPG'):
+                self._decode = tf.image.decode_jpeg(self._decode_data,
                                                 channels=channels)
-          elif self._image_format == 'png':
-            self._decode = tf.image.decode_png(self._decode_data,
+            elif self._image_format == 'png':
+                self._decode = tf.image.decode_png(self._decode_data,
                                               channels=channels)
 
 
     def read_image_dims(self, image_data):
         """Reads the image dimensions.
         Args:
-          image_data: string of image data.
+            image_data: string of image data.
         Returns:
-          image_height and image_width.
+            image_height and image_width.
         """
         image = self.decode_image(image_data)
 
@@ -60,16 +61,16 @@ class ImageReader(object):
     def decode_image(self, image_data):
         """Decodes the image data string.
         Args:
-          image_data: string of image data.
+            image_data: string of image data.
         Returns:
-          Decoded image data.
+            Decoded image data.
         Raises:
-          ValueError: Value of image channels not supported.
+            ValueError: Value of image channels not supported.
         """
-        image = self._session.run(self._decode,
-                                  feed_dict={self._decode_data: image_data})
+        image = self._session.run(
+            self._decode, feed_dict={self._decode_data: image_data})
         if len(image.shape) != 3 or image.shape[2] not in (1, 3):
-          raise ValueError('The image channels not supported.')
+            raise ValueError('The image channels not supported.')
 
         return image
 
@@ -92,8 +93,10 @@ def build_tfrecord(dataset_split, index):
     data_list = data_list[data_list['index'].isin(index)]
     combination = list(combinations(range(0, len(data_list)), 2))
 
-    matched_pairs = [c for c in combination if data_list.iloc[c[0]][-1 ] == data_list.iloc[c[1]][-1]]
-    unmatched_pairs = [c for c in combination if data_list.iloc[c[0]][-1] != data_list.iloc[c[1]][-1]]
+    matched_pairs = [c for c in combination \ 
+        if data_list.iloc[c[0]][-1 ] == data_list.iloc[c[1]][-1]]
+    unmatched_pairs = [c for c in combination \ 
+        if data_list.iloc[c[0]][-1] != data_list.iloc[c[1]][-1]]
     unmatched_pairs = random.sample(unmatched_pairs, len(matched_pairs) * 3)
     print('Number of matched pairs: {}\nNumber of unmatched pairs: {}'.format(
           len(matched_pairs), len(unmatched_pairs)))
@@ -104,7 +107,8 @@ def build_tfrecord(dataset_split, index):
 
     image_reader = ImageReader(image_format=FLAGS.image_format, channels=3)
 
-    output_filename = os.path.join(FLAGS.output_dir, dataset_split + '_mini.tfrecord')
+    output_filename = os.path.join(
+        FLAGS.output_dir, dataset_split + '_mini.tfrecord')
     with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
         for i in range(20):
             a, b = pairs[i]
@@ -152,7 +156,8 @@ def main(unused_argv):
     if not os.path.exists(FLAGS.output_dir):
         os.makedirs(FLAGS.output_dir)
     
-    train_index, val_index = train_test_split(range(0, NUMBER_INDEX), test_size=NUMBER_VAL_INDEX, shuffle=True)
+    train_index, val_index = train_test_split(
+        range(0, NUMBER_INDEX), test_size=NUMBER_VAL_INDEX, shuffle=True)
     build_tfrecord(dataset_split='train', index=train_index)
     build_tfrecord(dataset_split='val', index=val_index)
     
